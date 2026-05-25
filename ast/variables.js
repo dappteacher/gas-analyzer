@@ -1,0 +1,2 @@
+isStateVariable(node)
+getVariableType(node)
