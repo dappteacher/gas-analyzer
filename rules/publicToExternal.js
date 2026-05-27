@@ -15,7 +15,8 @@ function checkPublicToExternal(ast) {
             "ContractDefinition"
         ) {
 
-            const functionNames = [];
+            const internallyCalledFunctions =
+                new Set();
 
             node.subNodes.forEach(subNode => {
 
@@ -25,25 +26,9 @@ function checkPublicToExternal(ast) {
                     subNode.body
                 ) {
 
-                    JSON.stringify(
+                    collectInternalCalls(
                         subNode.body,
-                        (key, value) => {
-
-                            if (
-                                value &&
-                                value.type ===
-                                    "FunctionCall" &&
-                                value.expression &&
-                                value.expression.name
-                            ) {
-
-                                functionNames.push(
-                                    value.expression.name
-                                );
-                            }
-
-                            return value;
-                        }
+                        internallyCalledFunctions
                     );
                 }
             });
@@ -56,7 +41,11 @@ function checkPublicToExternal(ast) {
                     subNode.visibility ===
                         "public" &&
                     subNode.name &&
-                    !functionNames.includes(
+                    !subNode.isConstructor &&
+                    !subNode.isFallback &&
+                    !subNode.isReceiveEther &&
+                    !subNode.override &&
+                    !internallyCalledFunctions.has(
                         subNode.name
                     )
                 ) {
@@ -83,3 +72,53 @@ function checkPublicToExternal(ast) {
 
 module.exports =
     checkPublicToExternal;
+
+function collectInternalCalls(node, calledFunctions) {
+    if (!node || typeof node !== "object") {
+        return;
+    }
+
+    if (Array.isArray(node)) {
+        node.forEach(child => {
+            collectInternalCalls(
+                child,
+                calledFunctions
+            );
+        });
+
+        return;
+    }
+
+    if (
+        node.type === "FunctionCall" &&
+        node.expression
+    ) {
+        if (node.expression.type === "Identifier") {
+            calledFunctions.add(
+                node.expression.name
+            );
+        }
+
+        if (
+            node.expression.type === "MemberAccess" &&
+            node.expression.expression &&
+            node.expression.expression.type === "Identifier" &&
+            node.expression.expression.name === "this"
+        ) {
+            calledFunctions.add(
+                node.expression.memberName
+            );
+        }
+    }
+
+    Object.keys(node).forEach(key => {
+        if (key === "loc" || key === "range") {
+            return;
+        }
+
+        collectInternalCalls(
+            node[key],
+            calledFunctions
+        );
+    });
+}

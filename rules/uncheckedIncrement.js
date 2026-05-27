@@ -22,6 +22,13 @@ function checkUncheckedIncrement(ast) {
             return;
         }
 
+        if (
+            node.body &&
+            node.body.type === "UncheckedStatement"
+        ) {
+            return;
+        }
+
         const loopExpr =
             getLoopExpression(node);
 

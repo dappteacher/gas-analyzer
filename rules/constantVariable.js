@@ -4,6 +4,17 @@ const RULES =
 const createFinding =
     require("../utils/createFinding");
 
+const {
+    isConstant
+} = require("../ast/variables");
+
+const ALLOWED_LITERAL_TYPES = new Set([
+    "NumberLiteral",
+    "BooleanLiteral",
+    "StringLiteral",
+    "HexLiteral"
+]);
+
 function checkConstantVariables(ast) {
 
     const findings = [];
@@ -26,7 +37,10 @@ function checkConstantVariables(ast) {
 
                         if (
                             variable.expression &&
-                            variable.isDeclaredConst === false
+                            !isConstant(variable) &&
+                            isCompileTimeConstant(
+                                variable.expression
+                            )
                         ) {
 
                             findings.push(
@@ -53,3 +67,34 @@ function checkConstantVariables(ast) {
 
 module.exports =
     checkConstantVariables;
+
+function isCompileTimeConstant(expression) {
+    if (!expression) {
+        return false;
+    }
+
+    if (ALLOWED_LITERAL_TYPES.has(expression.type)) {
+        return true;
+    }
+
+    if (
+        expression.type === "UnaryOperation" &&
+        isCompileTimeConstant(
+            expression.subExpression
+        )
+    ) {
+        return true;
+    }
+
+    if (
+        expression.type === "BinaryOperation" &&
+        expression.operator !== "="
+    ) {
+        return (
+            isCompileTimeConstant(expression.left) &&
+            isCompileTimeConstant(expression.right)
+        );
+    }
+
+    return false;
+}

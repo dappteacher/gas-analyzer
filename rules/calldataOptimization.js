@@ -63,6 +63,14 @@ function checkCalldataOptimization(ast) {
             }
 
             if (isDynamic) {
+                if (
+                    isParameterMutated(
+                        node.body,
+                        param.name
+                    )
+                ) {
+                    return;
+                }
 
                 findings.push(
                     createFinding(
@@ -90,3 +98,71 @@ function checkCalldataOptimization(ast) {
 
 module.exports =
     checkCalldataOptimization;
+
+function isParameterMutated(body, parameterName) {
+    let mutated = false;
+
+    traverse(body, child => {
+        if (mutated || !child) {
+            return;
+        }
+
+        if (
+            child.type === "BinaryOperation" &&
+            isAssignmentOperator(child.operator) &&
+            referencesIdentifier(
+                child.left,
+                parameterName
+            )
+        ) {
+            mutated = true;
+        }
+
+        if (
+            child.type === "UnaryOperation" &&
+            (
+                child.operator === "++" ||
+                child.operator === "--" ||
+                child.isPrefix === true
+            ) &&
+            referencesIdentifier(
+                child.subExpression,
+                parameterName
+            )
+        ) {
+            mutated = true;
+        }
+    });
+
+    return mutated;
+}
+
+function referencesIdentifier(node, name) {
+    let found = false;
+
+    traverse(node, child => {
+        if (
+            child &&
+            child.type === "Identifier" &&
+            child.name === name
+        ) {
+            found = true;
+        }
+    });
+
+    return found;
+}
+
+function isAssignmentOperator(operator) {
+    return (
+        operator === "=" ||
+        operator === "+=" ||
+        operator === "-=" ||
+        operator === "*=" ||
+        operator === "/=" ||
+        operator === "%=" ||
+        operator === "|=" ||
+        operator === "&=" ||
+        operator === "^="
+    );
+}

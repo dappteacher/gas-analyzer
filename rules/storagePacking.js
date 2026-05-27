@@ -9,8 +9,15 @@ const RULES =
 
 const {
     getTypeSize,
-    canPack
+    canPack,
+    isPackableType
 } = require("../ast/storage");
+
+const {
+    getVariableTypeName,
+    isConstant,
+    isImmutable
+} = require("../ast/variables");
 
 function checkStoragePacking(ast) {
 
@@ -37,20 +44,23 @@ function checkStoragePacking(ast) {
 
                 subNode.variables.forEach(v => {
 
+                    const type =
+                        getVariableTypeName(v);
+
                     if (
-                        v.typeName &&
-                        v.typeName.name
+                        type &&
+                        !isConstant(v) &&
+                        !isImmutable(v)
                     ) {
 
                         stateVars.push({
                             name: v.name,
 
-                            type:
-                                v.typeName.name,
+                            type,
 
                             size:
                                 getTypeSize(
-                                    v.typeName.name
+                                    type
                                 ),
 
                             line:
@@ -76,6 +86,10 @@ function checkStoragePacking(ast) {
             const next =
                 stateVars[i + 1];
 
+            if (!isPackableType(current.type)) {
+                continue;
+            }
+
             // if next var already packs correctly
             if (
                 canPack(
@@ -99,6 +113,7 @@ function checkStoragePacking(ast) {
 
                 // can current + future pack?
                 if (
+                    isPackableType(future.type) &&
                     canPack(
                         current.type,
                         future.type

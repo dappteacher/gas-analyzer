@@ -1,4 +1,13 @@
 function generateSarif(findings, file) {
+    const uniqueRules =
+        Array.from(
+            new Map(
+                findings.map(f => [
+                    f.rule.id,
+                    f.rule
+                ])
+            ).values()
+        );
 
     return {
 
@@ -18,26 +27,26 @@ function generateSarif(findings, file) {
                             "https://github.com/yourname/gas-analyzer",
 
                         rules:
-                            findings.map(f => ({
+                            uniqueRules.map(rule => ({
                                 id:
-                                    f.rule.id,
+                                    rule.id,
 
                                 name:
-                                    f.rule.title,
+                                    rule.title,
 
                                 shortDescription: {
                                     text:
-                                        f.rule.title
+                                        rule.title
                                 },
 
                                 fullDescription: {
                                     text:
-                                        f.rule.recommendation
+                                        rule.recommendation
                                 },
 
                                 help: {
                                     text:
-                                        f.rule.impact
+                                        rule.impact
                                 }
                             }))
                     }

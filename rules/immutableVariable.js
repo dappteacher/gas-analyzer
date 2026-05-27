@@ -7,6 +7,11 @@ const createFinding =
 const RULES =
     require("./metadata");
 
+const {
+    isConstant,
+    isImmutable
+} = require("../ast/variables");
+
 function checkImmutableVariables(ast) {
 
     const findings = [];
@@ -48,7 +53,9 @@ function checkImmutableVariables(ast) {
                 if (
                     child.type ===
                     "BinaryOperation" &&
-                    child.operator === "="
+                isAssignmentOperator(
+                    child.operator
+                )
                 ) {
 
                     if (
@@ -77,7 +84,9 @@ function checkImmutableVariables(ast) {
                 if (
                     child.type ===
                     "BinaryOperation" &&
-                    child.operator === "="
+                isAssignmentOperator(
+                    child.operator
+                )
                 ) {
 
                     if (
@@ -106,11 +115,9 @@ function checkImmutableVariables(ast) {
                 !nonConstructorAssignments.has(
                     name
                 ) &&
-                !(
-                    variable.isDeclaredImmutable ||
-                    variable.isImmutable ||
-                    variable.mutability === "immutable"
-                )
+                !isImmutable(variable) &&
+                !isConstant(variable) &&
+                !variable.expression
             ) {
 
                 findings.push(
@@ -135,3 +142,17 @@ function checkImmutableVariables(ast) {
 
 module.exports =
     checkImmutableVariables;
+
+function isAssignmentOperator(operator) {
+    return (
+        operator === "=" ||
+        operator === "+=" ||
+        operator === "-=" ||
+        operator === "*=" ||
+        operator === "/=" ||
+        operator === "%=" ||
+        operator === "|=" ||
+        operator === "&=" ||
+        operator === "^="
+    );
+}
