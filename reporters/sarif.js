@@ -72,7 +72,8 @@ function generateSarif(findings, file) {
                             {
                                 physicalLocation: {
                                     artifactLocation: {
-                                        uri: file
+                                        uri:
+                                            f.file || file
                                     },
 
                                     region: {

@@ -1,5 +1,7 @@
-const fs =
-    require("fs");
+#!/usr/bin/env node
+
+const fs = require("fs");
+const path = require("path");
 
 const generateSarif =
     require("./reporters/sarif");
@@ -13,62 +15,68 @@ const runRules =
 const generateSummary =
     require("./utils/summary");
 
-const file = process.argv[2];
+const args = process.argv.slice(2);
 
-const jsonMode =
-    process.argv.includes("--json");
-
-const sarifMode =
-    process.argv.includes("--sarif");    
-
-const severityIndex =
-    process.argv.indexOf(
-        "--severity"
-    );
-
-let severityFilter = null;
-
-if (severityIndex !== -1) {
-
-    severityFilter =
-        process.argv[
-            severityIndex + 1
-        ];
+if (
+    args.includes("--help") ||
+    args.includes("-h")
+) {
+    printUsage();
+    process.exit(0);
 }
 
-if (!file) {
+const target = getTargetArg(args);
 
-    console.log("Usage:");
+const jsonMode =
+    args.includes("--json");
 
-    console.log(
-        "node index.js contracts/Sample.sol"
+const sarifMode =
+    args.includes("--sarif");
+
+const severityFilter =
+    getOptionValue(args, "--severity");
+
+const outputFile =
+    getOptionValue(args, "--out") ||
+    "results.sarif";
+
+if (!target) {
+    printUsage();
+    process.exit(1);
+}
+
+const files = collectSolidityFiles(target);
+
+if (files.length === 0) {
+    console.error(
+        `No Solidity files found in ${target}`
     );
 
     process.exit(1);
 }
 
-const ast = parseContract(file);
+let findings = files.flatMap(file => {
+    const ast = parseContract(file);
 
-let findings = runRules(ast);
+    return runRules(ast).map(finding => ({
+        ...finding,
+        file
+    }));
+});
 
-
-// severity filtering
 if (severityFilter) {
+    const normalizedSeverity =
+        severityFilter.toUpperCase();
 
     findings = findings.filter(f => {
-
         return (
             f.rule &&
-            f.rule.severity ===
-                severityFilter
+            f.rule.severity === normalizedSeverity
         );
     });
 }
 
-
-// JSON OUTPUT
 if (jsonMode) {
-
     console.log(
         JSON.stringify(
             findings,
@@ -80,18 +88,15 @@ if (jsonMode) {
     process.exit(0);
 }
 
-// SARIF OUTPUT
-
 if (sarifMode) {
-
     const sarif =
         generateSarif(
             findings,
-            file
+            target
         );
 
     fs.writeFileSync(
-        "results.sarif",
+        outputFile,
         JSON.stringify(
             sarif,
             null,
@@ -100,105 +105,160 @@ if (sarifMode) {
     );
 
     console.log(
-        "SARIF report generated: results.sarif"
+        `SARIF report generated: ${outputFile}`
     );
 
     process.exit(0);
 }
 
-// NORMAL OUTPUT
+printConsoleReport(findings);
 
-console.log(
-    "\n=== GAS ANALYSIS REPORT ===\n"
-);
-
-
-if (findings.length === 0) {
-
+function printUsage() {
+    console.log("Usage:");
     console.log(
-        "No issues found."
+        "  node index.js <file-or-directory> [--json] [--sarif] [--out results.sarif] [--severity HIGH|MEDIUM|LOW]"
     );
+}
 
-} else {
+function getOptionValue(argv, option) {
+    const index = argv.indexOf(option);
 
-    findings.forEach(f => {
+    if (index === -1) {
+        return null;
+    }
 
-        if (!f.rule) {
+    return argv[index + 1] || null;
+}
 
-            console.log(
-                "INVALID FINDING"
-            );
+function getTargetArg(argv) {
+    const optionsWithValues =
+        new Set([
+            "--severity",
+            "--out"
+        ]);
 
-            console.dir(f, {
-                depth: null
-            });
+    for (let i = 0; i < argv.length; i++) {
+        const arg = argv[i];
 
-            return;
+        if (optionsWithValues.has(arg)) {
+            i++;
+            continue;
         }
 
-        console.log(
-            `[${f.rule.id}] [${f.rule.severity}]`
+        if (!arg.startsWith("-")) {
+            return arg;
+        }
+    }
+
+    return null;
+}
+
+function collectSolidityFiles(targetPath) {
+    const absoluteTarget =
+        path.resolve(targetPath);
+
+    if (!fs.existsSync(absoluteTarget)) {
+        console.error(
+            `Path not found: ${targetPath}`
         );
 
-        console.log(
-            f.rule.title
+        process.exit(1);
+    }
+
+    const stat = fs.statSync(absoluteTarget);
+
+    if (stat.isFile()) {
+        return absoluteTarget.endsWith(".sol")
+            ? [absoluteTarget]
+            : [];
+    }
+
+    const entries =
+        fs.readdirSync(
+            absoluteTarget,
+            {
+                withFileTypes: true
+            }
         );
 
-        if (f.line) {
-
-            console.log(
-                `Line: ${f.line}`
+    return entries.flatMap(entry => {
+        const entryPath =
+            path.join(
+                absoluteTarget,
+                entry.name
             );
+
+        if (entry.isDirectory()) {
+            return collectSolidityFiles(entryPath);
         }
 
-        if (f.name) {
-
-            console.log(
-                `Variable: ${f.name}`
-            );
-        }
-
-        if (f.detail) {
-
-            console.log(
-                `Detail: ${f.detail}`
-            );
-        }
-
-        console.log(
-            `Impact: ${f.rule.impact}`
-        );
-
-        console.log(
-            `Recommendation: ${f.rule.recommendation}`
-        );
-
-        console.log("");
+        return entry.isFile() &&
+            entry.name.endsWith(".sol")
+            ? [entryPath]
+            : [];
     });
 }
 
+function printConsoleReport(findings) {
+    console.log(
+        "\n=== GAS ANALYSIS REPORT ===\n"
+    );
 
-// SUMMARY
+    if (findings.length === 0) {
+        console.log("No issues found.");
+    } else {
+        findings.forEach(f => {
+            if (!f.rule) {
+                console.log("INVALID FINDING");
+                console.dir(f, {
+                    depth: null
+                });
 
-const summary =
-    generateSummary(findings);
+                return;
+            }
 
-console.log(
-    "=== SUMMARY ===\n"
-);
+            console.log(
+                `[${f.rule.id}] [${f.rule.severity}]`
+            );
 
-console.log(
-    `HIGH: ${summary.HIGH}`
-);
+            console.log(f.rule.title);
 
-console.log(
-    `MEDIUM: ${summary.MEDIUM}`
-);
+            if (f.file) {
+                console.log(
+                    `File: ${path.relative(process.cwd(), f.file)}`
+                );
+            }
 
-console.log(
-    `LOW: ${summary.LOW}`
-);
+            if (f.line) {
+                console.log(`Line: ${f.line}`);
+            }
 
-console.log(
-    `TOTAL: ${summary.TOTAL}`
-);
+            if (f.name) {
+                console.log(`Name: ${f.name}`);
+            }
+
+            if (f.detail) {
+                console.log(`Detail: ${f.detail}`);
+            }
+
+            console.log(
+                `Impact: ${f.rule.impact}`
+            );
+
+            console.log(
+                `Recommendation: ${f.rule.recommendation}`
+            );
+
+            console.log("");
+        });
+    }
+
+    const summary =
+        generateSummary(findings);
+
+    console.log("=== SUMMARY ===\n");
+    console.log(`HIGH: ${summary.HIGH}`);
+    console.log(`MEDIUM: ${summary.MEDIUM}`);
+    console.log(`LOW: ${summary.LOW}`);
+    console.log(`TOTAL: ${summary.TOTAL}`);
+}

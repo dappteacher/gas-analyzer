@@ -40,6 +40,12 @@ Analyze a Solidity contract:
 node index.js contracts/Sample.sol
 ```
 
+Analyze every Solidity file in a directory:
+
+```bash
+node index.js contracts
+```
+
 Generate JSON:
 
 ```bash
@@ -50,6 +56,12 @@ Generate SARIF:
 
 ```bash
 node index.js contracts/Sample.sol --sarif
+```
+
+Write SARIF to a custom path:
+
+```bash
+node index.js contracts --sarif --out gas-results.sarif
 ```
 
 Filter by severity:
@@ -90,6 +102,10 @@ gas-analyzer/
 - Rule confidence scoring
 - VS Code extension or GitHub App integration
 
-## Author
+# Author
 
 Yaghoub Adelzadeh
+Blockchain Engineer
+
+GitHub
+[https://github.com/dappteacher](https://github.com/dappteacher)

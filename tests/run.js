@@ -1,4 +1,7 @@
 const assert = require("assert");
+const childProcess = require("child_process");
+const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const parseContract = require("../parser/parse");
@@ -92,6 +95,78 @@ assert.strictEqual(
     new Set(sarifRuleIds).size,
     sarifRuleIds.length,
     "SARIF rule metadata should be deduplicated"
+);
+
+const cliJson =
+    childProcess.execFileSync(
+        process.execPath,
+        [
+            path.join(__dirname, "..", "index.js"),
+            path.join(__dirname, "fixtures"),
+            "--json",
+            "--severity",
+            "MEDIUM"
+        ],
+        {
+            encoding: "utf8"
+        }
+    );
+
+const cliFindings = JSON.parse(cliJson);
+
+assert(
+    cliFindings.length > 0,
+    "CLI should scan Solidity files in directories"
+);
+
+assert(
+    cliFindings.every(
+        f => f.rule.severity === "MEDIUM" && f.file
+    ),
+    "CLI should apply severity filter and include file paths"
+);
+
+const sarifOut =
+    path.join(
+        fs.mkdtempSync(
+            path.join(os.tmpdir(), "gas-analyzer-")
+        ),
+        "report.sarif"
+    );
+
+childProcess.execFileSync(
+    process.execPath,
+    [
+        path.join(__dirname, "..", "index.js"),
+        fixture,
+        "--sarif",
+        "--out",
+        sarifOut
+    ],
+    {
+        encoding: "utf8"
+    }
+);
+
+assert(
+    fs.existsSync(sarifOut),
+    "CLI should write SARIF to --out path"
+);
+
+const cliSarif =
+    JSON.parse(
+        fs.readFileSync(sarifOut, "utf8")
+    );
+
+assert(
+    cliSarif.runs[0].results.every(
+        result =>
+            result.locations[0]
+                .physicalLocation
+                .artifactLocation
+                .uri.endsWith("all-rules.sol")
+    ),
+    "SARIF locations should point to each analyzed file"
 );
 
 console.log(
