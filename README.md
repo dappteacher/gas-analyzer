@@ -1,4 +1,4 @@
-# ⛽ Gas Analyzer
+# Gas Analyzer v0.2
 
 AST-powered Solidity Gas Optimization Analyzer.
 
@@ -6,37 +6,41 @@ Gas Analyzer is an open-source static analysis tool for Solidity smart contracts
 
 It helps developers, auditors, and protocol teams identify common gas-related issues before deployment and generate reports compatible with modern security tooling.
 
+Static analysis is intentionally conservative, but every finding should still be reviewed before changing production Solidity code.
+
 ---
 
-## ✨ Features
+## Features
 
 ### Static Analysis Engine
 
-- Solidity AST parsing with `@solidity-parser/parser`
-- Modular gas optimization rules
-- Console, JSON, and SARIF output
-- GitHub Code Scanning workflow example
-- Fixture-based regression tests
+- AST-based Solidity analysis
+- Modular rule architecture
+- Extensible rule engine
+- Fast contract inspection
+- File and directory analysis
 
 ### Gas Optimization Rules
 
 Currently supported:
 
 | Rule ID | Severity | Description |
-|----------|----------|-------------|
-| GAS-001 | HIGH | Variable can be constant |
-| GAS-002 | MEDIUM | Function can be external |
+| --- | --- | --- |
+| GAS-001 | HIGH | Literal state variable can be `constant` |
+| GAS-002 | MEDIUM | Public function can likely be `external` |
 | GAS-003 | LOW | Cache array length outside loop |
-| GAS-004 | MEDIUM | Variable can be immutable |
-| GAS-005 | MEDIUM | Storage packing optimization |
-| GAS-006 | LOW | Unchecked increment optimization |
-| GAS-007 | MEDIUM | Use calldata instead of memory |
+| GAS-004 | MEDIUM | Constructor-only state variable can be `immutable` |
+| GAS-005 | MEDIUM | Packable storage variables can be grouped more efficiently |
+| GAS-006 | LOW | Loop increment can use an `unchecked` block |
+| GAS-007 | MEDIUM | External read-only dynamic parameter can use `calldata` |
+| GAS-008 | MEDIUM | Duplicate storage read can be cached locally |
 
 ### Report Formats
 
 - Human-readable console output
 - JSON export
 - SARIF export
+- Custom SARIF output path with `--out`
 
 ### CI/CD Integration
 
@@ -48,46 +52,39 @@ Currently supported:
 
 - Automated test framework
 - Rule validation suite
+- Snapshot testing
+- Rule coverage metrics
 - Regression testing support
 
 ---
 
-# Architecture
+## Architecture
 
 ```text
-┌─────────────────────┐
-│ Solidity Contract   │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│ Solidity Parser     │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│ AST Representation  │
-└──────────┬──────────┘
-           │
-           ▼
-┌─────────────────────┐
-│ Rule Engine         │
-└──────────┬──────────┘
-           │
- ┌─────────┼─────────┐
- ▼         ▼         ▼
-Console    JSON     SARIF
+Solidity Contract
+        |
+        v
+Solidity Parser
+        |
+        v
+AST Representation
+        |
+        v
+Rule Engine
+        |
+        +--> Console
+        +--> JSON
+        +--> SARIF
 ```
 
 ---
 
-# Installation
+## Installation
 
 Clone the repository:
 
 ```bash
 git clone https://github.com/dappteacher/gas-analyzer.git
-
 cd gas-analyzer
 ```
 
@@ -99,7 +96,7 @@ npm install
 
 ---
 
-# Usage
+## Usage
 
 Analyze a Solidity contract:
 
@@ -113,11 +110,24 @@ Analyze every Solidity file in a directory:
 node index.js contracts
 ```
 
+Show CLI help:
+
+```bash
+node index.js --help
+```
+
 Filter by severity:
 
 ```bash
 node index.js contracts/Sample.sol --severity MEDIUM
 ```
+
+Severity values are case-insensitive:
+
+```bash
+node index.js contracts --severity medium
+```
+
 ---
 
 ## JSON Output
@@ -133,9 +143,16 @@ Example:
 ```json
 [
   {
-    "id": "GAS-001",
-    "severity": "HIGH",
-    "name": "fee"
+    "rule": {
+      "id": "GAS-001",
+      "title": "Variable can be constant",
+      "severity": "HIGH",
+      "impact": "Reduces storage gas costs",
+      "recommendation": "Use constant for immutable fixed values"
+    },
+    "line": 28,
+    "name": "fee",
+    "file": "contracts/Sample.sol"
   }
 ]
 ```
@@ -150,57 +167,62 @@ Generate SARIF output:
 node index.js contracts/Sample.sol --sarif
 ```
 
-This creates:
+By default, this creates:
 
 ```text
 results.sarif
 ```
 
-which can be uploaded to GitHub Code Scanning or other SARIF-compatible platforms.
+Write SARIF to a custom path:
+
+```bash
+node index.js contracts --sarif --out gas-results.sarif
+```
+
+SARIF output can be uploaded to GitHub Code Scanning or other SARIF-compatible platforms.
 
 ---
 
-# Example
+## Example
 
-## Contract
+### Contract
 
 ```solidity
 pragma solidity ^0.8.24;
 
 contract Sample {
-
     uint256 public fee = 5;
-
 }
 ```
 
-## Analyzer Output
+### Analyzer Output
 
 ```text
 === GAS ANALYSIS REPORT ===
 
 [GAS-001] [HIGH]
-
 Variable can be constant
+File: contracts/Sample.sol
+Line: 28
+Name: fee
+Impact: Reduces storage gas costs
+Recommendation: Use constant for immutable fixed values
 
-Line: 5
+=== SUMMARY ===
 
-Variable: fee
-
-Impact:
-Reduces storage gas costs
-
-Recommendation:
-Use constant for immutable fixed values
+HIGH: 1
+MEDIUM: 0
+LOW: 0
+TOTAL: 1
 ```
 
 ---
 
-# Supported Rules
+## Supported Rules
 
-## GAS-001 — Variable Can Be Constant
+### GAS-001 - Variable Can Be Constant
 
-Detects state variables initialized with fixed values that can be declared as `constant`.
+Detects state variables initialized with compile-time literal-style values that can be declared as `constant`.
 
 Example:
 
@@ -214,11 +236,13 @@ Suggested:
 uint256 public constant fee = 5;
 ```
 
+The rule avoids runtime expressions such as `block.timestamp` or `msg.sender`.
+
 ---
 
-## GAS-002 — Function Can Be External
+### GAS-002 - Function Can Be External
 
-Detects public functions that are never called internally.
+Detects public functions that are not called internally and can likely be marked `external`.
 
 Example:
 
@@ -232,31 +256,37 @@ Suggested:
 function foo() external {}
 ```
 
+This rule tracks simple internal calls and skips constructors, fallback functions, receive functions, and override functions.
+
 ---
 
-## GAS-003 — Cache Array Length
+### GAS-003 - Cache Array Length
 
-Detects repeated reads of `.length` inside loops.
+Detects repeated reads of `.length` inside loop conditions.
 
 Example:
 
 ```solidity
-for(uint i = 0; i < users.length; i++)
+for (uint256 i = 0; i < users.length; i++) {
+    total += users[i];
+}
 ```
 
 Suggested:
 
 ```solidity
-uint len = users.length;
+uint256 length = users.length;
 
-for(uint i = 0; i < len; i++)
+for (uint256 i = 0; i < length; i++) {
+    total += users[i];
+}
 ```
 
 ---
 
-## GAS-004 — Variable Can Be Immutable
+### GAS-004 - Variable Can Be Immutable
 
-Detects variables assigned only in the constructor.
+Detects state variables assigned in the constructor and not reassigned elsewhere.
 
 Example:
 
@@ -272,175 +302,243 @@ Suggested:
 
 ```solidity
 address public immutable owner;
-```
 
----
-
-## GAS-005 — Storage Packing Optimization
-
-Detects inefficient ordering of storage variables.
-
-Example:
-
-```solidity
-uint128 a;
-
-uint256 b;
-
-uint128 c;
-```
-
-Suggested:
-
-```solidity
-uint128 a;
-
-uint128 c;
-
-uint256 b;
-```
-
----
-
-## GAS-006 — Unchecked Increment
-
-Detects loop increments that can use `unchecked`.
-
-Example:
-
-```solidity
-for(uint i = 0; i < len; i++)
-```
-
-Suggested:
-
-```solidity
-unchecked {
-    ++i;
+constructor() {
+    owner = msg.sender;
 }
 ```
 
 ---
 
-## GAS-007 — Calldata Optimization
+### GAS-005 - Storage Packing Optimization
 
-Detects external functions using `memory` arrays unnecessarily.
+Detects storage variable ordering where smaller packable variables can be grouped more efficiently.
 
 Example:
 
 ```solidity
-function sum(
-    uint256[] memory nums
-)
+uint128 a;
+uint256 b;
+uint128 c;
+```
+
+Suggested:
+
+```solidity
+uint128 a;
+uint128 c;
+uint256 b;
+```
+
+---
+
+### GAS-006 - Unchecked Increment
+
+Detects loop increments that can potentially use `unchecked` to avoid overflow checks.
+
+Example:
+
+```solidity
+for (uint256 i = 0; i < length; i++) {
+    total += users[i];
+}
+```
+
+Suggested pattern:
+
+```solidity
+for (uint256 i = 0; i < length;) {
+    total += users[i];
+
+    unchecked {
+        i++;
+    }
+}
+```
+
+Review loop bounds before applying this optimization.
+
+---
+
+### GAS-007 - Calldata Optimization
+
+Detects external functions using read-only dynamic `memory` parameters that can use `calldata`.
+
+Example:
+
+```solidity
+function sum(uint256[] memory nums)
     external
+    pure
+    returns (uint256)
 {}
 ```
 
 Suggested:
 
 ```solidity
-function sum(
-    uint256[] calldata nums
-)
+function sum(uint256[] calldata nums)
     external
+    pure
+    returns (uint256)
 {}
+```
+
+The rule skips parameters that are mutated in the function body.
+
+---
+
+### GAS-008 - Duplicate SLOAD Detection
+
+Detects repeated reads of the same state variable or mapping/index access inside a function.
+
+Example:
+
+```solidity
+function multiRead(address user)
+    external
+    view
+    returns (uint256 total)
+{
+    total += balances[user];
+    total += balances[user];
+}
+```
+
+Suggested:
+
+```solidity
+function multiRead(address user)
+    external
+    view
+    returns (uint256 total)
+{
+    uint256 balance = balances[user];
+
+    total += balance;
+    total += balance;
+}
 ```
 
 ---
 
-# Running Tests
+## Running Tests
 
 Execute the complete test suite:
 
 ```bash
 npm test
 ```
-The test runner parses `tests/fixtures/all-rules.sol` and checks expected detections plus key false-positive guards.
+
+The test runner:
+
+- Parses `tests/fixtures/all-rules.sol`
+- Compares normalized findings against `tests/snapshots/all-rules.json`
+- Checks important false-positive guards
+- Verifies CLI directory scanning, severity filtering, and SARIF output
+- Reports rule coverage metrics
 
 Example:
 
 ```text
-PASS immutable/valid.sol
-PASS immutable/invalid.sol
-PASS calldata/valid.sol
-PASS calldata/invalid.sol
-
-4/4 tests passed
+8 findings across 8 rules
+Rule coverage: 8/8 (100%)
 ```
+
+Update snapshots after intentional rule-output changes:
+
+```bash
+npm run test:update-snapshots
+```
+
+Every rule ID in `rules/metadata.js` should be represented in the fixture so rule coverage stays meaningful.
 
 ---
 
-# GitHub Code Scanning
+## GitHub Code Scanning
 
 Generate SARIF:
 
 ```bash
-node index.js contracts/Sample.sol --sarif
+node index.js contracts --sarif --out results.sarif
 ```
 
-Upload results through GitHub Actions and review findings directly inside Pull Requests.
+Upload results through GitHub Actions and review findings directly inside pull requests.
+
+The workflow in `.github/workflows/gas-analyzer.yml` installs dependencies, runs tests, generates SARIF, and uploads it to GitHub Code Scanning.
 
 ---
 
-# Project Structure
+## Project Structure
 
 ```text
 gas-analyzer/
+  analyzer/
+    runRules.js
 
-├── analyzer/
-│   └── runRules.js
-│
-├── parser/
-│   └── parse.js
-│
-├── rules/
-│   ├── constantVariable.js
-│   ├── immutableVariable.js
-│   ├── storagePacking.js
-│   ├── calldataOptimization.js
-│   └── ...
-│
-├── exporters/
-│   ├── jsonExporter.js
-│   └── sarifExporter.js
-│
-├── utils/
-│
-├── tests/
-│   ├── contracts/
-│   ├── expected/
-│   └── runner.js
-│
-├── .github/
-│   └── workflows/
-│
-├── index.js
-├── package.json
-└── README.md
+  ast/
+    functions.js
+    loops.js
+    storage.js
+    variables.js
+
+  contracts/
+    Sample.sol
+
+  parser/
+    parse.js
+
+  reporters/
+    sarif.js
+
+  rules/
+    calldataOptimization.js
+    constantVariable.js
+    duplicateSload.js
+    immutableVariable.js
+    loopLength.js
+    metadata.js
+    publicToExternal.js
+    storagePacking.js
+    uncheckedIncrement.js
+
+  tests/
+    fixtures/
+      all-rules.sol
+    snapshots/
+      all-rules.json
+    run.js
+
+  utils/
+    createFinding.js
+    summary.js
+    traverse.js
+
+  .github/
+    workflows/
+      gas-analyzer.yml
+
+  index.js
+  package.json
+  README.md
 ```
 
 ---
 
-# Roadmap
+## Roadmap
 
-## v0.2
-
-- Duplicate SLOAD detection
-- Snapshot testing
-- Rule coverage metrics
-
-## v0.3
+### v0.3
 
 - Storage slot estimator
 - Nested loop analysis
 - Assembly optimization checks
 
-## v0.4
+### v0.4
 
 - VS Code extension
 - GitHub App integration
 
-## v1.0
+### v1.0
 
 - SaaS dashboard
 - Multi-contract analysis
@@ -448,25 +546,34 @@ gas-analyzer/
 
 ---
 
-# Contributing
+## Contributing
 
 Contributions are welcome.
 
 If you would like to add a new rule, improve analysis accuracy, or expand testing coverage, please open an issue before submitting large changes.
 
+When adding a rule:
+
+- Add the rule metadata in `rules/metadata.js`
+- Add the rule implementation in `rules/`
+- Wire it into `analyzer/runRules.js`
+- Add fixture coverage in `tests/fixtures/all-rules.sol`
+- Update `tests/snapshots/all-rules.json`
+- Confirm rule coverage remains complete with `npm test`
+
 ---
 
-# License
+## License
 
-MIT License
+ISC License.
 
 ---
 
-# Author
+## Author
 
-**Yaghoub Adelzadeh**
+Yaghoub Adelzadeh
 
-Smart Contract Engineer • Security Researcher • Blockchain Educator
+Smart Contract Engineer, Security Researcher, Blockchain Educator
 
 GitHub: https://github.com/dappteacher
 
@@ -474,4 +581,4 @@ LinkedIn: https://linkedin.com/in/dappteacher
 
 ---
 
-⭐ If this project helps you optimize your Solidity contracts, consider giving it a star.
+If this project helps you optimize your Solidity contracts, consider giving it a star.

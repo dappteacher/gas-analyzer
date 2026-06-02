@@ -73,6 +73,17 @@ const RULES = {
             "Avoids unnecessary memory allocation",
         recommendation:
             "Use calldata for external read-only parameters"
+    },
+
+    GAS_008: {
+        id: "GAS-008",
+        title:
+            "Duplicate storage read detected",
+        severity: "MEDIUM",
+        impact:
+            "Avoids repeated SLOAD operations",
+        recommendation:
+            "Cache repeated storage reads in a local variable"
     }
 };
 

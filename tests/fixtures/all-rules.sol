@@ -58,4 +58,12 @@ contract AllRules {
         nums[0] = 1;
         return nums[0];
     }
+
+    function duplicateRead(address user)
+        external
+        view
+        returns (uint256)
+    {
+        return balances[user] + balances[user];
+    }
 }

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "GAS-001",
+    "severity": "HIGH",
+    "line": 10,
+    "name": "fee",
+    "detail": null
+  },
+  {
+    "id": "GAS-002",
+    "severity": "MEDIUM",
+    "line": 19,
+    "name": "exposed",
+    "detail": null
+  },
+  {
+    "id": "GAS-003",
+    "severity": "LOW",
+    "line": 48,
+    "name": null,
+    "detail": "Array length is read during every loop iteration"
+  },
+  {
+    "id": "GAS-004",
+    "severity": "MEDIUM",
+    "line": 9,
+    "name": "owner",
+    "detail": null
+  },
+  {
+    "id": "GAS-005",
+    "severity": "MEDIUM",
+    "line": 7,
+    "name": null,
+    "detail": "Consider grouping packedA (uint128) with packedB (uint128)"
+  },
+  {
+    "id": "GAS-006",
+    "severity": "LOW",
+    "line": 48,
+    "name": null,
+    "detail": "Unchecked increments save gas in loops"
+  },
+  {
+    "id": "GAS-007",
+    "severity": "MEDIUM",
+    "line": 43,
+    "name": "nums",
+    "detail": "Using calldata avoids unnecessary memory copies"
+  },
+  {
+    "id": "GAS-008",
+    "severity": "MEDIUM",
+    "line": 67,
+    "name": "duplicateRead",
+    "detail": "balances[user] is read 2 times in the same function"
+  }
+]

@@ -19,6 +19,9 @@ const checkUncheckedIncrement =
 const checkCalldataOptimization =
     require("../rules/calldataOptimization");    
 
+const checkDuplicateSload =
+    require("../rules/duplicateSload");
+
 function runRules(ast) {
 
     let findings = [];
@@ -49,6 +52,10 @@ function runRules(ast) {
 
     findings = findings.concat(
         checkCalldataOptimization(ast)
+    );
+
+    findings = findings.concat(
+        checkDuplicateSload(ast)
     );
 
     return findings;

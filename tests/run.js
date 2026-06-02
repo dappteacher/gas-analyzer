@@ -7,6 +7,7 @@ const path = require("path");
 const parseContract = require("../parser/parse");
 const runRules = require("../analyzer/runRules");
 const generateSarif = require("../reporters/sarif");
+const RULES = require("../rules/metadata");
 
 const fixture =
     path.join(
@@ -17,6 +18,12 @@ const fixture =
 
 const ast = parseContract(fixture);
 const findings = runRules(ast);
+const snapshot =
+    path.join(
+        __dirname,
+        "snapshots",
+        "all-rules.json"
+    );
 
 function namesFor(ruleId) {
     return findings
@@ -30,6 +37,74 @@ function count(ruleId) {
         f => f.rule.id === ruleId
     ).length;
 }
+
+function normalizeFindings(items) {
+    return items.map(f => ({
+        id: f.rule.id,
+        severity: f.rule.severity,
+        line: f.line || null,
+        name: f.name || null,
+        detail: f.detail || null
+    }));
+}
+
+function assertSnapshot(name, actual) {
+    const serialized =
+        `${JSON.stringify(actual, null, 2)}\n`;
+
+    if (
+        process.env.UPDATE_SNAPSHOTS === "1" ||
+        process.argv.includes("--update-snapshots")
+    ) {
+        fs.writeFileSync(name, serialized);
+        return;
+    }
+
+    assert.strictEqual(
+        serialized,
+        fs.readFileSync(name, "utf8"),
+        `${path.basename(name)} snapshot mismatch`
+    );
+}
+
+function calculateRuleCoverage(items) {
+    const expectedRuleIds =
+        Object.values(RULES).map(rule => rule.id);
+
+    const coveredRuleIds =
+        new Set(
+            items.map(f => f.rule.id)
+        );
+
+    const missingRuleIds =
+        expectedRuleIds.filter(ruleId => {
+            return !coveredRuleIds.has(ruleId);
+        });
+
+    return {
+        totalRules: expectedRuleIds.length,
+        coveredRules:
+            expectedRuleIds.length -
+            missingRuleIds.length,
+        missingRuleIds,
+        percentage:
+            Math.round(
+                (
+                    (
+                        expectedRuleIds.length -
+                        missingRuleIds.length
+                    ) /
+                    expectedRuleIds.length
+                ) *
+                100
+            )
+    };
+}
+
+assertSnapshot(
+    snapshot,
+    normalizeFindings(findings)
+);
 
 assert(
     namesFor("GAS-001").includes("fee"),
@@ -83,6 +158,20 @@ assert.strictEqual(
     count("GAS-005"),
     1,
     "storage packing opportunity should be detected"
+);
+
+assert(
+    namesFor("GAS-008").includes("duplicateRead"),
+    "duplicate storage reads should be detected"
+);
+
+const coverage =
+    calculateRuleCoverage(findings);
+
+assert.deepStrictEqual(
+    coverage.missingRuleIds,
+    [],
+    "all rule IDs should have fixture coverage"
 );
 
 const sarif = generateSarif(findings, fixture);
@@ -171,4 +260,8 @@ assert(
 
 console.log(
     `${findings.length} findings across ${new Set(findings.map(f => f.rule.id)).size} rules`
+);
+
+console.log(
+    `Rule coverage: ${coverage.coveredRules}/${coverage.totalRules} (${coverage.percentage}%)`
 );

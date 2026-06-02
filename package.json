@@ -1,9 +1,10 @@
 {
   "name": "gas-analyzer",
-  "version": "1.0.0",
+  "version": "0.2.0",
   "main": "index.js",
   "scripts": {
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "test:update-snapshots": "node tests/run.js --update-snapshots"
   },
   "bin": {
     "gas-analyzer": "./index.js"
