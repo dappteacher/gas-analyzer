@@ -133,14 +133,14 @@ assert(
 
 assert.strictEqual(
     count("GAS-003"),
-    1,
-    "loop length should be detected once"
+    3,
+    "loop length should be detected for each uncached loop condition"
 );
 
 assert.strictEqual(
     count("GAS-006"),
-    1,
-    "unchecked increment should be detected once"
+    3,
+    "unchecked increment should be detected for each loop increment"
 );
 
 assert(
@@ -163,6 +163,23 @@ assert.strictEqual(
 assert(
     namesFor("GAS-008").includes("duplicateRead"),
     "duplicate storage reads should be detected"
+);
+
+assert(
+    namesFor("GAS-009").includes("AllRules"),
+    "storage slot estimate should be reported per contract"
+);
+
+assert.strictEqual(
+    count("GAS-010"),
+    1,
+    "nested loop should be detected"
+);
+
+assert.strictEqual(
+    count("GAS-011"),
+    1,
+    "inline assembly block should be detected once"
 );
 
 const coverage =

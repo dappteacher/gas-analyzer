@@ -1,4 +1,4 @@
-# Gas Analyzer v0.2
+# Gas Analyzer v0.3
 
 AST-powered Solidity Gas Optimization Analyzer.
 
@@ -19,6 +19,9 @@ Static analysis is intentionally conservative, but every finding should still be
 - Extensible rule engine
 - Fast contract inspection
 - File and directory analysis
+- Storage slot estimation
+- Nested loop analysis
+- Inline assembly optimization review
 
 ### Gas Optimization Rules
 
@@ -34,6 +37,9 @@ Currently supported:
 | GAS-006 | LOW | Loop increment can use an `unchecked` block |
 | GAS-007 | MEDIUM | External read-only dynamic parameter can use `calldata` |
 | GAS-008 | MEDIUM | Duplicate storage read can be cached locally |
+| GAS-009 | LOW | Estimate contract storage slot usage |
+| GAS-010 | HIGH | Nested loop can cause rapidly growing gas costs |
+| GAS-011 | LOW | Inline assembly should be reviewed for gas value |
 
 ### Report Formats
 
@@ -422,6 +428,69 @@ function multiRead(address user)
 
 ---
 
+### GAS-009 - Storage Slot Estimate
+
+Estimates how many storage slots a contract's state variables occupy, excluding `constant` and `immutable` variables.
+
+Example:
+
+```solidity
+contract Example {
+    uint128 a;
+    uint256 b;
+    uint128 c;
+}
+```
+
+Analyzer detail:
+
+```text
+Estimated storage slots: 3 for 3 state variables
+```
+
+Use this estimate to review storage layout before reordering variables. The estimate is intentionally lightweight and should be treated as a guide, not a replacement for compiler storage-layout output.
+
+---
+
+### GAS-010 - Nested Loop Analysis
+
+Detects loops inside other loops. Nested loops can become expensive quickly when either loop depends on user-controlled or unbounded input.
+
+Example:
+
+```solidity
+for (uint256 i = 0; i < matrix.length; i++) {
+    for (uint256 j = 0; j < matrix[i].length; j++) {
+        total += matrix[i][j];
+    }
+}
+```
+
+Suggested approaches:
+
+- Avoid nested loops over unbounded input
+- Cache repeated values where possible
+- Precompute results off-chain or across multiple transactions
+- Add practical input limits when the loop is unavoidable
+
+---
+
+### GAS-011 - Assembly Optimization Checks
+
+Detects inline assembly blocks and asks for gas-focused review.
+
+Example:
+
+```solidity
+assembly {
+    result := add(value, 1)
+}
+```
+
+Inline assembly can be valuable, but it can also bypass optimizer assumptions or duplicate what modern Solidity already compiles efficiently. Review whether the assembly block is cheaper, safer, and clearer than equivalent Solidity.
+
+---
+
 ## Running Tests
 
 Execute the complete test suite:
@@ -492,13 +561,16 @@ gas-analyzer/
     sarif.js
 
   rules/
+    assemblyOptimization.js
     calldataOptimization.js
     constantVariable.js
     duplicateSload.js
     immutableVariable.js
     loopLength.js
     metadata.js
+    nestedLoop.js
     publicToExternal.js
+    storageSlotEstimator.js
     storagePacking.js
     uncheckedIncrement.js
 
@@ -527,6 +599,18 @@ gas-analyzer/
 
 ## Roadmap
 
+### v1.0
+
+- SaaS dashboard
+- Multi-contract analysis
+- AI-powered optimization suggestions
+
+### v0.2
+
+- Duplicate SLOAD detection
+- Snapshot testing
+- Rule coverage metrics
+
 ### v0.3
 
 - Storage slot estimator
@@ -537,12 +621,6 @@ gas-analyzer/
 
 - VS Code extension
 - GitHub App integration
-
-### v1.0
-
-- SaaS dashboard
-- Multi-contract analysis
-- AI-powered optimization suggestions
 
 ---
 

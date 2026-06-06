@@ -84,6 +84,39 @@ const RULES = {
             "Avoids repeated SLOAD operations",
         recommendation:
             "Cache repeated storage reads in a local variable"
+    },
+
+    GAS_009: {
+        id: "GAS-009",
+        title:
+            "Storage slot estimate",
+        severity: "LOW",
+        impact:
+            "Helps evaluate storage layout and packing opportunities",
+        recommendation:
+            "Review estimated slot usage before changing storage layout"
+    },
+
+    GAS_010: {
+        id: "GAS-010",
+        title:
+            "Nested loop detected",
+        severity: "HIGH",
+        impact:
+            "Nested loops can cause gas costs to grow rapidly",
+        recommendation:
+            "Avoid nested loops over unbounded input or cache/precompute results"
+    },
+
+    GAS_011: {
+        id: "GAS-011",
+        title:
+            "Inline assembly optimization review",
+        severity: "LOW",
+        impact:
+            "Assembly can bypass optimizer assumptions or duplicate Solidity optimizations",
+        recommendation:
+            "Review whether the assembly block is cheaper than equivalent Solidity"
     }
 };
 

@@ -21,6 +21,20 @@
     "detail": "Array length is read during every loop iteration"
   },
   {
+    "id": "GAS-003",
+    "severity": "LOW",
+    "line": 75,
+    "name": null,
+    "detail": "Array length is read during every loop iteration"
+  },
+  {
+    "id": "GAS-003",
+    "severity": "LOW",
+    "line": 76,
+    "name": null,
+    "detail": "Array length is read during every loop iteration"
+  },
+  {
     "id": "GAS-004",
     "severity": "MEDIUM",
     "line": 9,
@@ -42,10 +56,31 @@
     "detail": "Unchecked increments save gas in loops"
   },
   {
+    "id": "GAS-006",
+    "severity": "LOW",
+    "line": 75,
+    "name": null,
+    "detail": "Unchecked increments save gas in loops"
+  },
+  {
+    "id": "GAS-006",
+    "severity": "LOW",
+    "line": 76,
+    "name": null,
+    "detail": "Unchecked increments save gas in loops"
+  },
+  {
     "id": "GAS-007",
     "severity": "MEDIUM",
     "line": 43,
     "name": "nums",
+    "detail": "Using calldata avoids unnecessary memory copies"
+  },
+  {
+    "id": "GAS-007",
+    "severity": "MEDIUM",
+    "line": 70,
+    "name": "matrix",
     "detail": "Using calldata avoids unnecessary memory copies"
   },
   {
@@ -54,5 +89,26 @@
     "line": 67,
     "name": "duplicateRead",
     "detail": "balances[user] is read 2 times in the same function"
+  },
+  {
+    "id": "GAS-009",
+    "severity": "LOW",
+    "line": 4,
+    "name": "AllRules",
+    "detail": "Estimated storage slots: 7 for 7 state variables"
+  },
+  {
+    "id": "GAS-010",
+    "severity": "HIGH",
+    "line": 76,
+    "name": null,
+    "detail": "Nested loops can grow gas costs quickly with input size"
+  },
+  {
+    "id": "GAS-011",
+    "severity": "LOW",
+    "line": 87,
+    "name": null,
+    "detail": "Inline assembly can bypass optimizer assumptions and should be reviewed for cheaper Solidity equivalents"
   }
 ]

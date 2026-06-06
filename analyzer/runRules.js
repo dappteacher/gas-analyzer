@@ -22,6 +22,15 @@ const checkCalldataOptimization =
 const checkDuplicateSload =
     require("../rules/duplicateSload");
 
+const checkStorageSlotEstimate =
+    require("../rules/storageSlotEstimator");
+
+const checkNestedLoops =
+    require("../rules/nestedLoop");
+
+const checkAssemblyOptimization =
+    require("../rules/assemblyOptimization");
+
 function runRules(ast) {
 
     let findings = [];
@@ -56,6 +65,18 @@ function runRules(ast) {
 
     findings = findings.concat(
         checkDuplicateSload(ast)
+    );
+
+    findings = findings.concat(
+        checkStorageSlotEstimate(ast)
+    );
+
+    findings = findings.concat(
+        checkNestedLoops(ast)
+    );
+
+    findings = findings.concat(
+        checkAssemblyOptimization(ast)
     );
 
     return findings;

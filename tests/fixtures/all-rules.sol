@@ -66,4 +66,26 @@ contract AllRules {
     {
         return balances[user] + balances[user];
     }
+
+    function nested(uint256[][] memory matrix)
+        external
+        pure
+        returns (uint256 total)
+    {
+        for (uint256 i = 0; i < matrix.length; i++) {
+            for (uint256 j = 0; j < matrix[i].length; j++) {
+                total += matrix[i][j];
+            }
+        }
+    }
+
+    function assemblyAdd(uint256 value)
+        external
+        pure
+        returns (uint256 result)
+    {
+        assembly {
+            result := add(value, 1)
+        }
+    }
 }
