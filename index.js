@@ -15,6 +15,11 @@ const runRules =
 const generateSummary =
     require("./utils/summary");
 
+const {
+    attachGasEstimates,
+    summarizeGasEstimates
+} = require("./utils/gasEstimate");
+
 const args = process.argv.slice(2);
 
 if (
@@ -75,6 +80,8 @@ if (severityFilter) {
         );
     });
 }
+
+findings = attachGasEstimates(findings);
 
 if (jsonMode) {
     console.log(
@@ -249,6 +256,23 @@ function printConsoleReport(findings) {
                 `Recommendation: ${f.rule.recommendation}`
             );
 
+            if (
+                f.gasEstimate &&
+                f.gasEstimate.estimable
+            ) {
+                console.log(
+                    `Gas Estimate: ${f.gasEstimate.currentGas} -> ${f.gasEstimate.optimizedGas} ${f.gasEstimate.unit}`
+                );
+
+                console.log(
+                    `Estimated Savings: ${f.gasEstimate.savedGas} gas (${f.gasEstimate.decreasePercent}%, ${f.gasEstimate.confidence} confidence)`
+                );
+            } else if (f.gasEstimate) {
+                console.log(
+                    `Gas Estimate: ${f.gasEstimate.assumption}`
+                );
+            }
+
             console.log("");
         });
     }
@@ -261,4 +285,24 @@ function printConsoleReport(findings) {
     console.log(`MEDIUM: ${summary.MEDIUM}`);
     console.log(`LOW: ${summary.LOW}`);
     console.log(`TOTAL: ${summary.TOTAL}`);
+
+    const gasSummary =
+        summarizeGasEstimates(findings);
+
+    console.log("\n=== GAS ESTIMATE ===\n");
+    console.log(
+        `ESTIMABLE FINDINGS: ${gasSummary.estimableFindings}`
+    );
+    console.log(
+        `CURRENT: ${gasSummary.currentGas}`
+    );
+    console.log(
+        `AFTER RECOMMENDATIONS: ${gasSummary.optimizedGas}`
+    );
+    console.log(
+        `SAVINGS: ${gasSummary.savedGas} (${gasSummary.decreasePercent}%)`
+    );
+    console.log(
+        `NOTE: ${gasSummary.note}`
+    );
 }

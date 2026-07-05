@@ -22,6 +22,7 @@ Static analysis is intentionally conservative, but every finding should still be
 - Storage slot estimation
 - Nested loop analysis
 - Inline assembly optimization review
+- Automatic heuristic gas estimates before and after recommendations
 
 ### Gas Optimization Rules
 
@@ -47,6 +48,7 @@ Currently supported:
 - JSON export
 - SARIF export
 - Custom SARIF output path with `--out`
+- Per-finding gas estimate data in console and JSON output
 
 ### CI/CD Integration
 
@@ -158,10 +160,57 @@ Example:
     },
     "line": 28,
     "name": "fee",
+    "gasEstimate": {
+      "estimable": true,
+      "currentGas": 2100,
+      "optimizedGas": 3,
+      "savedGas": 2097,
+      "decreasePercent": 99.86,
+      "unit": "per state variable read",
+      "confidence": "medium",
+      "assumption": "Replaces an SLOAD with a compile-time constant access"
+    },
     "file": "contracts/Sample.sol"
   }
 ]
 ```
+
+---
+
+## Gas Estimation
+
+Gas Analyzer adds a heuristic `gasEstimate` to each finding where a static estimate is meaningful.
+
+Each estimate includes:
+
+- `currentGas`: estimated cost before applying the recommendation
+- `optimizedGas`: estimated cost after applying the recommendation
+- `savedGas`: estimated gas saved
+- `decreasePercent`: estimated percentage decrease
+- `unit`: what the estimate applies to, such as per read, per call, or per loop iteration
+- `confidence`: rough confidence level
+- `assumption`: the assumption behind the estimate
+
+Example for replacing a storage variable with `constant`:
+
+```text
+Gas Estimate: 2100 -> 3 per state variable read
+Estimated Savings: 2097 gas (99.86%, medium confidence)
+```
+
+The console summary also includes an aggregate heuristic estimate:
+
+```text
+=== GAS ESTIMATE ===
+
+ESTIMABLE FINDINGS: 11
+CURRENT: 25150
+AFTER RECOMMENDATIONS: 302
+SAVINGS: 24848 (98.8%)
+NOTE: Static heuristic estimate. Use compiler/runtime gas reports for exact transaction costs.
+```
+
+These numbers are useful for prioritization, but they are not a substitute for compiler output, Foundry gas snapshots, Hardhat gas reporter, or transaction-level traces. Real gas depends on compiler version, optimizer settings, calldata size, storage warmth, branching, and runtime inputs.
 
 ---
 
@@ -583,6 +632,7 @@ gas-analyzer/
 
   utils/
     createFinding.js
+    gasEstimate.js
     summary.js
     traverse.js
 

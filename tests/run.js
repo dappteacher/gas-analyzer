@@ -8,6 +8,10 @@ const parseContract = require("../parser/parse");
 const runRules = require("../analyzer/runRules");
 const generateSarif = require("../reporters/sarif");
 const RULES = require("../rules/metadata");
+const {
+    attachGasEstimates,
+    summarizeGasEstimates
+} = require("../utils/gasEstimate");
 
 const fixture =
     path.join(
@@ -18,6 +22,8 @@ const fixture =
 
 const ast = parseContract(fixture);
 const findings = runRules(ast);
+const estimatedFindings =
+    attachGasEstimates(findings);
 const snapshot =
     path.join(
         __dirname,
@@ -111,6 +117,26 @@ assert(
     "literal initialized state variable should be constant candidate"
 );
 
+const constantFinding =
+    estimatedFindings.find(f => {
+        return (
+            f.rule.id === "GAS-001" &&
+            f.name === "fee"
+        );
+    });
+
+assert.strictEqual(
+    constantFinding.gasEstimate.currentGas,
+    2100,
+    "constant candidate should estimate current SLOAD gas"
+);
+
+assert.strictEqual(
+    constantFinding.gasEstimate.optimizedGas,
+    3,
+    "constant candidate should estimate optimized constant access gas"
+);
+
 assert(
     !namesFor("GAS-001").includes("runtimeValue"),
     "runtime expression should not be constant candidate"
@@ -191,6 +217,15 @@ assert.deepStrictEqual(
     "all rule IDs should have fixture coverage"
 );
 
+const gasSummary =
+    summarizeGasEstimates(estimatedFindings);
+
+assert(
+    gasSummary.savedGas > 0 &&
+    gasSummary.decreasePercent > 0,
+    "gas summary should estimate savings and percent decrease"
+);
+
 const sarif = generateSarif(findings, fixture);
 const sarifRuleIds =
     sarif.runs[0].tool.driver.rules.map(
@@ -227,9 +262,12 @@ assert(
 
 assert(
     cliFindings.every(
-        f => f.rule.severity === "MEDIUM" && f.file
+        f =>
+            f.rule.severity === "MEDIUM" &&
+            f.file &&
+            f.gasEstimate
     ),
-    "CLI should apply severity filter and include file paths"
+    "CLI should apply severity filter and include file paths plus gas estimates"
 );
 
 const sarifOut =
