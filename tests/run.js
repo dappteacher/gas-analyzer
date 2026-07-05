@@ -20,6 +20,20 @@ const fixture =
         "all-rules.sol"
     );
 
+const mutableConstantFixture =
+    path.join(
+        __dirname,
+        "fixtures",
+        "mutable-constant-candidate.sol"
+    );
+
+const dynamicArrayImmutableFixture =
+    path.join(
+        __dirname,
+        "fixtures",
+        "dynamic-array-immutable-invalid.sol"
+    );
+
 const ast = parseContract(fixture);
 const findings = runRules(ast);
 const estimatedFindings =
@@ -142,6 +156,21 @@ assert(
     "runtime expression should not be constant candidate"
 );
 
+const mutableConstantFindings =
+    runRules(
+        parseContract(mutableConstantFixture)
+    );
+
+assert(
+    !mutableConstantFindings.some(f => {
+        return (
+            f.rule.id === "GAS-001" &&
+            f.name === "fee"
+        );
+    }),
+    "state variable reassigned after declaration should not be constant candidate"
+);
+
 assert(
     namesFor("GAS-002").includes("exposed"),
     "uncalled public function should be external candidate"
@@ -155,6 +184,21 @@ assert(
 assert(
     namesFor("GAS-004").includes("owner"),
     "constructor-only assignment should be immutable candidate"
+);
+
+const dynamicArrayFindings =
+    runRules(
+        parseContract(dynamicArrayImmutableFixture)
+    );
+
+assert(
+    !dynamicArrayFindings.some(f => {
+        return (
+            f.rule.id === "GAS-004" &&
+            f.name === "myTokens"
+        );
+    }),
+    "dynamic arrays cannot be immutable candidates"
 );
 
 assert.strictEqual(

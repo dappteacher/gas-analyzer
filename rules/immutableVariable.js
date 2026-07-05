@@ -117,7 +117,8 @@ function checkImmutableVariables(ast) {
                 ) &&
                 !isImmutable(variable) &&
                 !isConstant(variable) &&
-                !variable.expression
+                !variable.expression &&
+                canBeImmutable(variable)
             ) {
 
                 findings.push(
@@ -154,5 +155,50 @@ function isAssignmentOperator(operator) {
         operator === "|=" ||
         operator === "&=" ||
         operator === "^="
+    );
+}
+
+function canBeImmutable(variable) {
+    if (!variable || !variable.typeName) {
+        return false;
+    }
+
+    const typeName =
+        variable.typeName;
+
+    if (
+        typeName.type === "ArrayTypeName" ||
+        typeName.type === "Mapping" ||
+        typeName.type === "FunctionTypeName"
+    ) {
+        return false;
+    }
+
+    if (typeName.type === "UserDefinedTypeName") {
+        return true;
+    }
+
+    if (typeName.type !== "ElementaryTypeName") {
+        return false;
+    }
+
+    return isImmutableElementaryType(
+        typeName.name
+    );
+}
+
+function isImmutableElementaryType(typeName) {
+    if (!typeName) {
+        return false;
+    }
+
+    return (
+        typeName === "bool" ||
+        typeName === "address" ||
+        typeName === "uint" ||
+        typeName === "int" ||
+        /^uint[0-9]+$/.test(typeName) ||
+        /^int[0-9]+$/.test(typeName) ||
+        /^bytes[0-9]+$/.test(typeName)
     );
 }
